@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Galaxy Collider</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+	</head>
+
+	<body>
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../three/build/three.module.js"
+				}
+			}
+		</script>
+
+		<script type="module">
+
+			import * as THREE from '../three/build/three.module.js';
+
+			import { OrbitControls } from '../three/examples/jsm/controls/OrbitControls.js';
+            
+            import { GUI } from '../three/examples/jsm/libs/lil-gui.module.min.js';
+
+			let controls, renderer, geometry;
+
+            let particlesMesh=null;
+            let particlesGeometry=null;
+            let material_stars=null;
+            let geometry_tar = null;
+            let material_tar = null;
+            let geometry_int = null;
+            let material_int = null;
+            let target=null;
+            let intruder=null;
+            let vel_tar=new Float32Array(3);
+            let vel_int=new Float32Array(3);
+            let acc_tar=new Float32Array(3);
+            let acc_int=new Float32Array(3);
+            let dt=0;
+            let posArray, velArray, accArray;
+            let hasplayed=false;
+            let vel_scale=100;
+            let starRad=1;
+            //let G=0.00043; //pc(km/s)^2/Mo
+            let G=0.00136; // kpc^3/(10^8yrs)^2/10^6Mo 
+            //typical galaxy is 1-100kpc, central mass of MW is 4e6 Mo, full mass is 1e9 Mo, 
+            //andromeda and MW will collide at ~10kpc/10^8yrs
+
+
+            var scene = new THREE.Scene();
+			scene.background = new THREE.Color( 0x000000 );
+
+            renderer = new THREE.WebGLRenderer( { antialias: true } );
+			renderer.setPixelRatio( window.devicePixelRatio );
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			document.body.appendChild( renderer.domElement );
+
+			var camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 100 );
+			camera.position.set( 1, 1, 3 );
+            scene.add(camera);
+
+            controls = new OrbitControls( camera, renderer.domElement );
+
+			controls.maxPolarAngle = Math.PI / 2;
+
+            window.addEventListener( 'resize', onWindowResize );
+
+            const effectController = {}
+            effectController.int_posx=1.0;
+            effectController.int_posy=1.0;
+            effectController.int_posz=1.0;
+
+            effectController.int_velx=-1.0;
+            effectController.int_vely=-.3;
+            effectController.int_velz=-.05;
+
+            effectController.int_mass=2.0;
+            effectController.tar_mass=1.0;
+
+            effectController.particleCount=1000;
+
+            effectController.starDist=3;
+
+            effectController.gospeed=0.1;
+            effectController.playpause=false;
+            effectController.CameraPos=0;
+            effectController.reset=false;
+
+            initGUI();
+            generateStars();
+            generateTar();
+            generateInt();
+
+            render();
+
+            function StartAnimation(){
+                godt=1;
+            }
+
+            function PauseAnimation(){
+                godt=0;
+            }
+
+            function ResetParameters(){
+                godt=0;
+                generateInt()
+                generateTar()
+                generateStars()
+            }
+
+            
+            //set up the initial values, such as the Target, the intruder and the star map. 
+            function generateTar(){
+                if(target!==null){
+                    geometry_tar.dispose();
+                    material_tar.dispose();
+                    scene.remove(target);
+                }
+                console.log('in Tar ')
+                //target
+                material_tar = new THREE.MeshBasicMaterial({color: 'cyan'});
+                geometry_tar = new THREE.SphereGeometry(Math.pow(effectController.tar_mass,1.0/3.0)*0.05,16,8);
+;
+                vel_tar[0]=0;
+                vel_tar[1]=0;
+                vel_tar[2]=0;
+;
+                acc_tar[0]=0;
+                acc_tar[1]=0;
+                acc_tar[2]=0;
+
+                target = new THREE.Mesh(geometry_tar,material_tar);
+
+                target.position.set(0,0,0);
+                
+                scene.add(target);
+                if (effectController.hasplayed==true){
+                    effectController.hasplayed=false;
+                    effectController.playpause=false;
+                    generateInt();
+                    generateStars();
+                    initGUI();
+                }
+            }
+
+            function generateInt(){
+                if(intruder!==null){
+                    geometry_int.dispose();
+                    material_int.dispose();
+                    scene.remove(intruder);
+                }
+                console.log('in Int')
+                //intruder
+                material_int = new THREE.MeshBasicMaterial({color: 0xFF0000});
+                geometry_int = new THREE.SphereGeometry(Math.pow(effectController.int_mass,1.0/3.0)*0.05,16,8);
+
+                vel_int[0]=effectController.int_velx/vel_scale;
+                vel_int[1]=effectController.int_vely/vel_scale;
+                vel_int[2]=effectController.int_velz/vel_scale;
+
+                acc_int[0]=0;
+                acc_int[1]=0;
+                acc_int[2]=0;
+
+                intruder = new THREE.Mesh(geometry_int,material_int);
+
+                const int_posx=effectController.int_posx;
+                const int_posy=effectController.int_posy;
+                const int_posz=effectController.int_posz;
+                intruder.position.set(int_posx,int_posy,int_posz);
+                
+                scene.add(intruder);
+                if (effectController.hasplayed==true){
+                    effectController.hasplayed=false;
+                    effectController.playpause=false;
+                    generateTar();
+                    generateStars();
+                    initGUI()
+                }
+            }
+
+            function generateStars(){
+                if(particlesMesh!==null){
+                    particlesGeometry.dispose();
+                    material_stars.dispose();
+                    scene.remove(particlesMesh);
+                }
+                console.log('in stars')
+
+                //stars
+                var particleCount = effectController.particleCount;
+                particlesGeometry = new THREE.BufferGeometry;
+                posArray=setStarDist(particleCount);
+                for (var p=0; p<particleCount; p++){
+                    posArray[p*3]*=starRad;
+                    posArray[p*3+1]*=starRad;
+                    posArray[p*3+2]*=starRad;
+                }
+                velArray=setStarVel(particleCount);
+                accArray=starAcc(particleCount);
+
+                const loader = new THREE.TextureLoader();
+                const ball = loader.load('../sphere.png');
+
+                material_stars = new THREE.PointsMaterial({
+                    size: 0.05,
+                    color: 'white',
+                    depthWrite: false,
+                    sizeAttenuation: true,
+                    alphaMap: ball,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending,
+                });
+
+
+                particlesGeometry.setAttribute('position',new THREE.BufferAttribute(posArray, 3).setUsage(THREE.DynamicDrawUsage)) ; 
+
+                particlesMesh = new THREE.Points(particlesGeometry, material_stars);
+
+                scene.add(particlesMesh);
+
+                if (effectController.hasplayed==true){
+                    effectController.hasplayed=false;
+                    effectController.playpause=false;
+                    startstop()
+                    generateInt();
+                    generateTar();
+                    initGUI()
+                }
+            }
+
+            //set up the GUI for choosing the initial parameters
+            function initGUI() {
+
+                const gui = new GUI();
+
+                const PositionFolder = gui.addFolder( 'Position');
+                PositionFolder.add(effectController, 'int_posx', -5.0,5.0,0.1).onChange(generateInt).name('Intruder X (kpc)');
+                PositionFolder.add(effectController, 'int_posy', -5.0,5.0,0.1).onChange(generateInt).name('Intruder Y (kpc)');
+                PositionFolder.add(effectController, 'int_posz', -5.0,5.0,0.1).onChange(generateInt).name('Intruder Z (kpc)');
+                PositionFolder.open();
+                const VelocityFolder = gui.addFolder('Velocity');
+                VelocityFolder.add(effectController, 'int_velx', -100.0,100.0,1).onChange(generateInt).name('Intruder V_X (kpc/10^8 yrs)');
+                VelocityFolder.add(effectController, 'int_vely', -100.0,100.0,1).onChange(generateInt).name('Intruder V_Y (kpc/10^8 yrs)');
+                VelocityFolder.add(effectController, 'int_velz', -100.0,100.0,1).onChange(generateInt).name('Intruder V_Z (kpc/10^8 yrs)');
+                VelocityFolder.open();
+                const MassFolder = gui.addFolder('Mass');
+                MassFolder.add(effectController, 'int_mass', 1,100,5).onChange(generateInt).name('Intruder Mass (10^6 solar masses)');
+                MassFolder.add(effectController,'tar_mass', 1,100,5).onChange(generateTar).name('Target Mass (10^6 solar masses)');
+                const StarDistFolder = gui.addFolder('Star Distribution');
+                StarDistFolder.add(effectController, 'starDist', {'Disk':1, 'Ellipsoid Even':2, 'Disk Random':3,'Ellipsoid Random':4}).name('Star Distribution').onChange(generateStars)
+                StarDistFolder.add(effectController, 'particleCount', 1000,100000,100).name('Number of Stars').onChange(generateStars)
+                const CameraFolder = gui.addFolder('Camera');
+                CameraFolder.add(effectController, 'CameraPos',{'Center of mass':0,'Target':1,'Intruder':2,'None':3}).name('Camera Position').onChange(CameraPosUp)
+                const PlayPauseFolder = gui.addFolder('Animation Speed');
+                PlayPauseFolder.add(effectController,'gospeed').name('Time Step/Precision (10^8 yrs)').onChange(restart)
+                PlayPauseFolder.add(effectController, 'playpause').name('Play/Pause').onChange(startstop);//.onChange(initialParams)
+                PlayPauseFolder.add(effectController,'reset').name('Reset').onChange(restart);
+            };
+
+            function restart(){
+                effectController.hasplayed=false;
+                effectController.playpause=false;
+                effectController.reset=false;
+                startstop()
+                generateInt()
+                generateStars()
+                generateTar()
+                initGUI()
+            }
+
+            function startstop(){
+                if (effectController.playpause == true){
+                    //render()
+                    dt=effectController.gospeed;
+                    effectController.hasplayed=true;
+                } else if (effectController.playpause == false){
+                    dt=0;
+                }
+            }
+
+
+            function CameraPosUp(){
+                if (effectController.CameraPos == 0){
+                    var CMpos= new THREE.Vector3((target.position.x*effectController.tar_mass+intruder.position.x*effectController.int_mass)/(effectController.tar_mass+effectController.int_mass),(target.position.y*effectController.tar_mass+intruder.position.y*effectController.int_mass)/(effectController.tar_mass+effectController.int_mass),(target.position.z*effectController.tar_mass+intruder.position.z*effectController.int_mass)/(effectController.tar_mass+effectController.int_mass));
+                    camera.lookAt(CMpos);
+                    return CMpos;
+                } else if (effectController.CameraPos == 1){
+                    var CMpos = new THREE.Vector3(target.position.x,target.position.y,target.position.z);
+                    camera.lookAt(CMpos);
+                    return CMpos;
+                } else if (effectController.CameraPos == 2){
+                    var CMpos = new THREE.Vector3(intruder.position.x,intruder.position.y,intruder.position.z);
+                    camera.lookAt(CMpos);
+                    return CMpos;
+                } else if(effectController.CameraPos == 3){
+                    return new THREE.Vector3();
+                }
+            }
+
+            //Star setup types
+            function setStarDist(particleCount){
+                if ( effectController.starDist==1){
+                    return starDisk(particleCount);
+                } else if (effectController.starDist == 2){
+                    return starEllipse(particleCount);
+                } else if (effectController.starDist ==3){
+                    return starDiskRand(particleCount);
+                } else if (effectController.starDist ==4){
+                    return starEllipseRand(particleCount);
+                }
+                renderer.render(camera)
+            }
+
+            function setStarVel(particleCount){
+                if ( effectController.starDist==1){
+                    return starDiskVel(particleCount);
+                } else if (effectController.starDist == 2){
+                    return starEllipseVel(particleCount);
+                } else if (effectController.starDist ==3){
+                    return starDiskVel(particleCount);
+                } else if (effectController.starDist ==4){
+                    return starEllipseVel(particleCount);
+                }
+            }
+            
+            function starDisk(particleCount){
+                const posArray = new Float32Array(particleCount * 3);
+                for (var p=0; p< particleCount; p++){
+                    posArray[p*3]=(Math.pow((p+0.5)/particleCount,0.5))*(Math.cos(Math.PI*(1+Math.pow(5,0.5))*p));
+                    posArray[p*3+1]=0;
+                    posArray[p*3+2]=(Math.pow((p+0.5)/particleCount,0.5))*(Math.sin(Math.PI*(1+Math.pow(5,0.5))*p));
+                }
+                return posArray;
+            }
+
+            function starDiskVel(particleCount){
+                const velArray = new Float32Array(particleCount*3);
+                const orbdir=new Float32Array(3);
+                orbdir[0]=0;
+                orbdir[1]=1;
+                orbdir[2]=0;
+                for (var p=0; p<particleCount;p++){
+                    velArray[p*3]  =orbdir[1]*posArray[p*3+2]-orbdir[2]*posArray[p*3+1];
+                    velArray[p*3+1]=orbdir[2]*posArray[p*3]  -orbdir[0]*posArray[p*3+2];
+                    velArray[p*3+2]=orbdir[0]*posArray[p*3+1]-orbdir[1]*posArray[p*3];
+                    const normval=Math.sqrt(velArray[p*3]*velArray[p*3]+velArray[p*3+1]*velArray[p*3+1]+velArray[p*3+2]*velArray[p*3+2]);
+                    const radiusval=Math.sqrt(posArray[p*3]*posArray[p*3]+posArray[p*3+1]*posArray[p*3+1]+posArray[p*3+2]*posArray[p*3+2]);
+                    velArray[p*3]*=Math.sqrt(G*effectController.tar_mass/radiusval)/normval;
+                    velArray[p*3+1]*=Math.sqrt(G*effectController.tar_mass/radiusval)/normval;
+                    velArray[p*3+2]*=Math.sqrt(G*effectController.tar_mass/radiusval)/normval;
+                }
+                return velArray;
+            }
+
+            function starAcc(particleCount){
+                const accArray = new Float32Array(particleCount*3);
+                for (var p=0;p<particleCount;p++){
+                    var posDiffTx=-posArray[p*3];
+                    var posDiffTy=-posArray[p*3+1];
+                    var posDiffTz=-posArray[p*3+2];
+
+                    var posNetT=Math.sqrt(posDiffTx*posDiffTx+posDiffTy*posDiffTy+posDiffTz*posDiffTz);
+                    accArray[p*3]=effectController.tar_mass*posDiffTx*G/(posNetT*posNetT*posNetT);
+                    accArray[p*3+1]=effectController.tar_mass*posDiffTy*G/(posNetT*posNetT*posNetT);
+                    accArray[p*3+2]=effectController.tar_mass*posDiffTz*G/(posNetT*posNetT*posNetT);
+                }
+                return accArray;
+            }
+
+            function starEllipseRand(particleCount){
+                const posArray = new Float32Array(particleCount*3)
+                for (var p=0; p <particleCount; p++){
+                    posArray[p*3]=(Math.random()*2)-1;
+                    posArray[p*3+1]=(Math.random()*2)-1;
+                    posArray[p*3+2]=(Math.random()*2)-1;
+                    if ((posArray[p*3]*posArray[p*3]+posArray[p*3+1]*posArray[p*3+1]+posArray[p*3+2]*posArray[p*3+2])>1){
+                        p=p-1;
+                    }
+                }
+                return posArray;
+            }
+
+            function starEllipseVel(particleCount){
+                const velArray = new Float32Array(particleCount*3);
+                const orbdir=new Float32Array(3);
+                for (var p=0; p<particleCount;p++){
+                    orbdir[0]=Math.random()*2-1;
+                    orbdir[1]=Math.random()*2-1;
+                    orbdir[2]=Math.random()*2-1;
+                    orbdir[0]/=Math.sqrt(orbdir[0]*orbdir[0]+orbdir[1]*orbdir[1]+orbdir[2]*orbdir[2])
+                    orbdir[1]/=Math.sqrt(orbdir[0]*orbdir[0]+orbdir[1]*orbdir[1]+orbdir[2]*orbdir[2])
+                    orbdir[2]/=Math.sqrt(orbdir[0]*orbdir[0]+orbdir[1]*orbdir[1]+orbdir[2]*orbdir[2])
+                    velArray[p*3]  =orbdir[1]*posArray[p*3+2]-orbdir[2]*posArray[p*3+1];
+                    velArray[p*3+1]=orbdir[2]*posArray[p*3]  -orbdir[0]*posArray[p*3+2];
+                    velArray[p*3+2]=orbdir[0]*posArray[p*3+1]-orbdir[1]*posArray[p*3];
+                    const normval=Math.sqrt(velArray[p*3]*velArray[p*3]+velArray[p*3+1]*velArray[p*3+1]+velArray[p*3+2]*velArray[p*3+2]);
+                    const radiusval=Math.sqrt(posArray[p*3]*posArray[p*3]+posArray[p*3+1]*posArray[p*3+1]+posArray[p*3+2]*posArray[p*3+2]);
+                    velArray[p*3]*=Math.sqrt(G*effectController.tar_mass/radiusval)/normval;
+                    velArray[p*3+1]*=Math.sqrt(G*effectController.tar_mass/radiusval)/normval;
+                    velArray[p*3+2]*=Math.sqrt(G*effectController.tar_mass/radiusval)/normval;
+                }
+                return velArray;
+            }
+
+            function starDiskRand(particleCount){
+                const posArray = new Float32Array(particleCount * 3);
+                for (var p=0; p< particleCount; p++){
+                    posArray[p*3]=Math.random()*2-1;
+                    posArray[p*3+1]=0;
+                    posArray[p*3+2]=Math.random()*2-1;
+                    if ((posArray[p*3]*posArray[p*3]+posArray[p*3+2]*posArray[p*3+2])>1){
+                        p=p-1;
+                    }
+                }
+                return posArray;
+            }
+
+            function starEllipse(particleCount){
+                //var particleCount2=Math.pow((Math.floor(Math.pow(particleCount,1./3.)/2)+1)*2,3);
+                //const posArray = new Float32Array(particleCount2 * 3);
+                const posArray = new Float32Array(particleCount * 3)
+                const a=1.;
+                const vol_el=(2.)/Math.pow(particleCount,1./3.);
+                var p=0;
+                for (var x=0.; x<=a; x=x+vol_el){
+                    for (var y=0.; y<=a; y=y+vol_el){
+                        for (var z=0.; z<=a; z=z+vol_el){
+                            var xval=x*a*(Math.pow((a*a)-(y*y)*0.5-(z*z)/2.+(y*y*z*z)/(3.*a*a),0.5));
+                            var yval=y*a*(Math.pow((a*a)-(z*z)*0.5-(x*x)/2.+(x*x*z*z)/(3.*a*a),0.5));
+                            var zval=z*a*(Math.pow((a*a)-(x*x)*0.5-(y*y)/2.+(y*y*x*x)/(3.*a*a),0.5));
+                            if ((x==0 && y==0) &&(z==0) ){
+                                var upv=0;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=zval;
+                                p=p+upv+3;
+                            } else if ((x==0 && y==0) &&(z!=0)){
+                                var upv=0;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=zval;
+                                upv=3;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=-zval;
+                                p=p+upv+3;
+                            } else if ((x==0 && z==0) &&(y!=0)){
+                                var upv=0;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=zval;
+                                upv=3;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=-yval;
+                                posArray[p+2+upv]=zval;
+                                p=p+upv+3;
+                            } else if ((y==0 && z==0) &&(x!=0)){
+                                var upv=0;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=zval;
+                                upv=3;
+                                posArray[p+upv]=-xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=zval;
+                                p=p+upv+3;
+                            } else if (x==0 && (y!=0 && z!=0)){
+                                var upv=0;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=zval;
+                                upv=3;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=-yval;
+                                posArray[p+2+upv]=zval;
+                                upv=6;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=-zval;
+                                upv=9;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=-yval;
+                                posArray[p+2+upv]=-zval;
+                                p=p+upv+3;
+                            } else if (y==0 && (x!=0 && z!=0)){
+                                var upv=0;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=zval;
+                                upv=3;
+                                posArray[p+upv]=-xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=zval;
+                                upv=6;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=-zval;
+                                upv=9;
+                                posArray[p+upv]=-xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=-zval;
+                                p=p+upv+3;
+                            } else if (z==0 && (y!=0 && x!=0)){
+                                var upv=0;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=zval;
+                                upv=3;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=-yval;
+                                posArray[p+2+upv]=zval;
+                                upv=6;
+                                posArray[p+upv]=-xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=zval;
+                                upv=9;
+                                posArray[p+upv]=-xval;
+                                posArray[p+1+upv]=-yval;
+                                posArray[p+2+upv]=zval;
+                                p=p+upv+3;
+                            } else if(x!=0 && (y!=0 && z!=0)){
+                                var upv=0;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=zval;
+                                upv=3;
+                                posArray[p+upv]=-xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=zval;
+                                upv=6;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=-yval;
+                                posArray[p+2+upv]=zval;
+                                upv=9;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=-zval;
+                                upv=12;
+                                posArray[p+upv]=-xval;
+                                posArray[p+1+upv]=-yval;
+                                posArray[p+2+upv]=zval;
+                                upv=15;
+                                posArray[p+upv]=-xval;
+                                posArray[p+1+upv]=yval;
+                                posArray[p+2+upv]=-zval;
+                                upv=18;
+                                posArray[p+upv]=xval;
+                                posArray[p+1+upv]=-yval;
+                                posArray[p+2+upv]=-zval;
+                                upv=21;
+                                posArray[p+upv]=-xval;
+                                posArray[p+1+upv]=-yval;
+                                posArray[p+2+upv]=-zval;
+                                p=p+upv+3;
+                            }
+                        }
+                    }
+                }
+                return posArray;
+                //https://stackoverflow.com/questions/54338310/distributing-points-evenly-spaced-within-a-sphere
+            }
+
+            //render functions
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			// function animate() {
+
+			// 	requestAnimationFrame( animate );
+
+			// 	//controls.update(); // only required if controls.enableDamping = true, or if controls.autoRotate = true
+
+			// 	render();
+
+			// }
+
+			function render() {
+                //target.position.x=target.position.x+0.02
+                positionUpdate();
+                renderer.render( scene, camera );
+                requestAnimationFrame(render);
+
+			}
+
+            function positionUpdate(){
+
+                if (dt!=0){
+                    effectController.hasplayed=true;
+                }
+                
+                var tarx=target.position.x+vel_tar[0]*dt+acc_tar[0]*(dt*dt*0.5);
+                var tary=target.position.y+vel_tar[1]*dt+acc_tar[1]*(dt*dt*0.5);
+                var tarz=target.position.z+vel_tar[2]*dt+acc_tar[2]*(dt*dt*0.5);
+                target.position.set(tarx,tary,tarz);
+
+                var intx=(intruder.position.x+vel_int[0]*dt+acc_int[0]*(dt*dt*0.5));
+                var inty=(intruder.position.y+vel_int[1]*dt+acc_int[1]*(dt*dt*0.5));
+                var intz=(intruder.position.z+vel_int[2]*dt+acc_int[2]*(dt*dt*0.5));
+                intruder.position.set(intx,inty,intz);
+
+                var distNet=target.position.distanceTo(intruder.position);
+                var distVec=new Float32Array(3)
+                distVec[0]=(target.position.x-intruder.position.x)/distNet;
+                distVec[1]=(target.position.y-intruder.position.y)/distNet;
+                distVec[2]=(target.position.z-intruder.position.z)/distNet;
+
+                var acc_tar_n=new Float32Array(3);
+                acc_tar_n[0]=-effectController.int_mass*G*distVec[0]/(distNet*distNet);
+                acc_tar_n[1]=-effectController.int_mass*G*distVec[1]/(distNet*distNet);
+                acc_tar_n[2]=-effectController.int_mass*G*distVec[2]/(distNet*distNet);
+
+                var acc_int_n=new Float32Array(3)
+                acc_int_n[0]=effectController.tar_mass*G*distVec[0]/(distNet*distNet);
+                acc_int_n[1]=effectController.tar_mass*G*distVec[1]/(distNet*distNet);
+                acc_int_n[2]=effectController.tar_mass*G*distVec[2]/(distNet*distNet);
+
+
+                vel_tar[0]+=(acc_tar[0]+acc_tar_n[0])*0.5*dt;
+                vel_tar[1]+=(acc_tar[1]+acc_tar_n[1])*0.5*dt;
+                vel_tar[2]+=(acc_tar[2]+acc_tar_n[2])*0.5*dt;
+
+                vel_int[0]+=(acc_int[0]+acc_int_n[0])*0.5*dt;
+                vel_int[1]+=(acc_int[1]+acc_int_n[1])*0.5*dt;
+                vel_int[2]+=(acc_int[2]+acc_int_n[2])*0.5*dt;
+
+                acc_int=acc_int_n;
+                acc_tar=acc_tar_n;
+
+                for (var p=0; p< effectController.particleCount; p++){
+                    var posDiffTx=-posArray[p*3]+target.position.x;
+                    var posDiffTy=-posArray[p*3+1]+target.position.y;
+                    var posDiffTz=-posArray[p*3+2]+target.position.z;
+
+                    var posNetT=Math.sqrt(posDiffTx*posDiffTx+posDiffTy*posDiffTy+posDiffTz*posDiffTz);
+
+                    var posDiffIx=-posArray[p*3]+intruder.position.x;
+                    var posDiffIy=-posArray[p*3+1]+intruder.position.y;
+                    var posDiffIz=-posArray[p*3+2]+intruder.position.z;
+
+                    var posNetI=Math.sqrt(posDiffIx*posDiffIx+posDiffIy*posDiffIy+posDiffIz*posDiffIz);
+
+                    posArray[p*3]+=velArray[p*3]*dt+accArray[p*3]*dt*dt*0.5;
+                    posArray[p*3+1]+=velArray[p*3+1]*dt+accArray[p*3+1]*dt*dt*0.5;
+                    posArray[p*3+2]+=velArray[p*3+2]*dt+accArray[p*3+2]*dt*dt*0.5;
+
+                    var accArray_x=effectController.tar_mass*posDiffTx*G/(posNetT*posNetT*posNetT) + effectController.int_mass*posDiffIx*G/(posNetI*posNetI*posNetI);
+                    var accArray_y=effectController.tar_mass*posDiffTy*G/(posNetT*posNetT*posNetT) + effectController.int_mass*posDiffIy*G/(posNetI*posNetI*posNetI)
+                    var accArray_z=effectController.tar_mass*posDiffTz*G/(posNetT*posNetT*posNetT) + effectController.int_mass*posDiffIz*G/(posNetI*posNetI*posNetI)
+
+                    velArray[p*3]+= (accArray[p*3]+accArray_x)*0.5*dt
+                    velArray[p*3+1]+= (accArray[p*3+1]+accArray_y)*0.5*dt
+                    velArray[p*3+2]+= (accArray[p*3+2]+accArray_z)*0.5*dt
+
+                    accArray[p*3]=accArray_x;
+                    accArray[p*3+1]=accArray_y;
+                    accArray[p*3+2]=accArray_z;
+
+                }
+                particlesMesh.geometry.attributes.position.needsUpdate=true;
+
+                var Cmpos=CameraPosUp();
+
+
+            };
+		</script>
+
+	</body>
+</html>
