@@ -265,7 +265,7 @@
 			MassFolder.add(effectController,'tar_mass').onChange(generateTar).name('Target Mass (10^6 solar masses)');
 			const StarDistFolder = gui.addFolder('Star Distribution');
 			StarDistFolder.add(effectController, 'starDist', {'Disk':1, 'Ellipsoid Even':2, 'Disk Random':3,'Ellipsoid Random':4}).name('Star Distribution').onChange(generateStars)
-			StarDistFolder.add(effectController, 'particleCount', 1000,50000,100).name('Number of Stars').onChange(generateStars)
+			StarDistFolder.add(effectController, 'particleCount', 1000,10000,100).name('Number of Stars').onChange(generateStars)
 			const CameraFolder = gui.addFolder('Camera');
 			CameraFolder.add(effectController, 'CameraPos',{'Center of mass':0,'Target':1,'Intruder':2}).name('Camera Position').onChange(CameraPosUp)
 			const PlayPauseFolder = gui.addFolder('Animation Speed');
@@ -380,7 +380,7 @@
 			    var posDiffTy=-posArray[p*3+1];
 			    var posDiffTz=-posArray[p*3+2];
 
-			    var posNetT=Math.sqrt(posDiffTx*posDiffTx+posDiffTy*posDiffTy+posDiffTz*posDiffTz);
+			    var posNetT=Math.sqrt(posDiffTx*posDiffTx+posDiffTy*posDiffTy+posDiffTz*posDiffTz)+softfac;
 			    accArray[p*3]=effectController.tar_mass*posDiffTx*G/(posNetT*posNetT*posNetT);
 			    accArray[p*3+1]=effectController.tar_mass*posDiffTy*G/(posNetT*posNetT*posNetT);
 			    accArray[p*3+2]=effectController.tar_mass*posDiffTz*G/(posNetT*posNetT*posNetT);
