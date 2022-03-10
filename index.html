@@ -60,7 +60,7 @@
 		    //andromeda and MW will collide at ~10kpc/10^8yrs
 
 		    //softening factor to help account for close encouters, could be fixed to scale with the time step, you want this to be small for more accurate physics
-		    let softfac=0.01
+		    let softfac=0.001
 		    // adds small randomness to the initial position of the target and intruder so that no error occurs if they are placed on top of one another
 		    let epsilon=10000;
 
@@ -250,30 +250,30 @@
 
 			const gui = new GUI();
 
-			const PositionFolder = gui.addFolder( 'Position');
+			const PositionFolder = gui.addFolder( 'Intruder');
 			PositionFolder.add(effectController, 'int_posx', -5.0,5.0,0.1).onChange(generateInt).name('Intruder X (kpc)');
 			PositionFolder.add(effectController, 'int_posy', -5.0,5.0,0.1).onChange(generateInt).name('Intruder Y (kpc)');
 			PositionFolder.add(effectController, 'int_posz', -5.0,5.0,0.1).onChange(generateInt).name('Intruder Z (kpc)');
+			PositionFolder.add(effectController, 'int_velx', -100.0,100.0,1).onChange(generateInt).name('Intruder V_X (kpc/10^8 yrs)');
+			PositionFolder.add(effectController, 'int_vely', -100.0,100.0,1).onChange(generateInt).name('Intruder V_Y (kpc/10^8 yrs)');
+			PositionFolder.add(effectController, 'int_velz', -100.0,100.0,1).onChange(generateInt).name('Intruder V_Z (kpc/10^8 yrs)');
 			PositionFolder.open();
-			const VelocityFolder = gui.addFolder('Velocity');
-			VelocityFolder.add(effectController, 'int_velx', -100.0,100.0,1).onChange(generateInt).name('Intruder V_X (kpc/10^8 yrs)');
-			VelocityFolder.add(effectController, 'int_vely', -100.0,100.0,1).onChange(generateInt).name('Intruder V_Y (kpc/10^8 yrs)');
-			VelocityFolder.add(effectController, 'int_velz', -100.0,100.0,1).onChange(generateInt).name('Intruder V_Z (kpc/10^8 yrs)');
-			VelocityFolder.open();
 			const MassFolder = gui.addFolder('Mass');
 			MassFolder.add(effectController, 'int_mass').onChange(generateInt).name('Intruder Mass (10^6 solar masses)');
 			MassFolder.add(effectController,'tar_mass').onChange(generateTar).name('Target Mass (10^6 solar masses)');
 			const StarDistFolder = gui.addFolder('Star Distribution');
 			StarDistFolder.add(effectController, 'starDist', {'Disk':1, 'Ellipsoid Even':2, 'Disk Random':3,'Ellipsoid Random':4}).name('Star Distribution').onChange(generateStars)
-			StarDistFolder.add(effectController, 'particleCount', 1000,10000,100).name('Number of Stars').onChange(generateStars)
+			StarDistFolder.add(effectController, 'particleCount', 1000,10000,100).name('Number of Stars').onChange(generateStars);
 			const CameraFolder = gui.addFolder('Camera');
-			CameraFolder.add(effectController, 'CameraPos',{'Center of mass':0,'Target':1,'Intruder':2}).name('Camera Position').onChange(CameraPosUp)
+			CameraFolder.add(effectController, 'CameraPos',{'Center of mass':0,'Target':1,'Intruder':2}).name('Camera Position').onChange(CameraPosUp);
 			const PlayPauseFolder = gui.addFolder('Animation Speed');
 			PlayPauseFolder.add(effectController,'gospeed').name('Time Step/Precision (10^8 yrs)').onChange(restart);
 			PlayPauseFolder.add(effectController,'simspeed').name('Simulation speed').onChange(restart);
 			PlayPauseFolder.add(effectController, 'playpause').name('Play/Pause').onChange(startstop);
 			PlayPauseFolder.add(effectController,'reset').name('Reset').onChange(restart);
 		    };
+			
+			
 
 		    //restart the setup before playing
 		    function restart(){
@@ -605,11 +605,9 @@
 
 		    //actual physics and updating, uses the verlet algorithm, which should be more accurate than the leap-frog or other algorithms
 		    function positionUpdate(){
-
 			if (dt!=0){
 			    effectController.hasplayed=true;
 			}
-
 			var tarx=target.position.x+vel_tar[0]*dt+acc_tar[0]*(dt*dt*0.5);
 			var tary=target.position.y+vel_tar[1]*dt+acc_tar[1]*(dt*dt*0.5);
 			var tarz=target.position.z+vel_tar[2]*dt+acc_tar[2]*(dt*dt*0.5);
