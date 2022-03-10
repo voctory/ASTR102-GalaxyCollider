@@ -256,9 +256,9 @@
 			PositionFolder.add(effectController, 'int_posz', -5.0,5.0,0.1).onChange(generateInt).name('Intruder Z (kpc)');
 			PositionFolder.open();
 			const VelocityFolder = gui.addFolder('Velocity');
-			VelocityFolder.add(effectController, 'int_velx', -10.0,10.0,1).onChange(generateInt).name('Intruder V_X (kpc/10^8 yrs)');
-			VelocityFolder.add(effectController, 'int_vely', -10.0,10.0,1).onChange(generateInt).name('Intruder V_Y (kpc/10^8 yrs)');
-			VelocityFolder.add(effectController, 'int_velz', -10.0,10.0,1).onChange(generateInt).name('Intruder V_Z (kpc/10^8 yrs)');
+			VelocityFolder.add(effectController, 'int_velx', -100.0,100.0,1).onChange(generateInt).name('Intruder V_X (kpc/10^8 yrs)');
+			VelocityFolder.add(effectController, 'int_vely', -100.0,100.0,1).onChange(generateInt).name('Intruder V_Y (kpc/10^8 yrs)');
+			VelocityFolder.add(effectController, 'int_velz', -100.0,100.0,1).onChange(generateInt).name('Intruder V_Z (kpc/10^8 yrs)');
 			VelocityFolder.open();
 			const MassFolder = gui.addFolder('Mass');
 			MassFolder.add(effectController, 'int_mass').onChange(generateInt).name('Intruder Mass (10^6 solar masses)');
