@@ -260,16 +260,14 @@
 			PositionFolder.add(effectController, 'int_vely').onChange(generateInt).name('Intruder V_Y (kpc/10^8 yrs)');
 			PositionFolder.add(effectController, 'int_velz').onChange(generateInt).name('Intruder V_Z (kpc/10^8 yrs)');
 			PositionFolder.open();
-			const MassFolder = gui.addFolder('Mass');
+			const MassFolder = gui.addFolder('Stars and precision');
 			MassFolder.add(effectController, 'int_mass').onChange(generateInt).name('Intruder Mass (10^6 Mo)');
 			MassFolder.add(effectController,'tar_mass').onChange(generateTar).name( ' Target  Mass (10^6 Mo)');
-			const StarDistFolder = gui.addFolder('Star Distribution');
-			StarDistFolder.add(effectController, 'starDist', {'Disk':1, 'Ellipsoid Even':2, 'Disk Random':3,'Ellipsoid Random':4}).name('Star Distribution').onChange(generateStars)
-			StarDistFolder.add(effectController, 'particleCount', 1000,10000,100).name('Number of Stars').onChange(generateStars);
-			const CameraFolder = gui.addFolder('Camera');
-			CameraFolder.add(effectController, 'CameraPos',{'Center of mass':0,'Target':1,'Intruder':2}).name('Camera Position').onChange(CameraPosUp);
-			const PlayPauseFolder = gui.addFolder('Animation Speed');
-			PlayPauseFolder.add(effectController,'gospeed').name('Calculation Time Step (10^8 yrs)').onChange(restart);
+			MassFolder.add(effectController, 'starDist', {'Disk':1, 'Ellipsoid Even':2, 'Disk Random':3,'Ellipsoid Random':4}).name('Star Distribution').onChange(generateStars)
+			MassFolder.add(effectController, 'particleCount', 1000,10000,100).name('Number of Stars').onChange(generateStars);
+			MassFolder.add(effectController,'gospeed').name('Calculation Time Step (10^8 yrs)').onChange(restart);    
+			const PlayPauseFolder = gui.addFolder('Animation');
+			PlayPauseFolder.add(effectController, 'CameraPos',{'Center of mass':0,'Target':1,'Intruder':2}).name('Camera Position').onChange(CameraPosUp);
 			PlayPauseFolder.add(effectController,'simspeed').name('Simulation speed').onChange(restart);
 			PlayPauseFolder.add(effectController, 'playpause').name('Play/Pause').onChange(startstop);
 			PlayPauseFolder.add(effectController,'reset').name('Reset').onChange(restart);
