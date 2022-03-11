@@ -92,7 +92,7 @@
 		    effectController.int_posy=1.0;
 		    effectController.int_posz=0.0;
 
-		    effectController.int_velx=.5;
+		    effectController.int_velx=.1;
 		    effectController.int_vely=-.3;
 		    effectController.int_velz=0.0;
 
@@ -269,7 +269,7 @@
 			const CameraFolder = gui.addFolder('Camera');
 			CameraFolder.add(effectController, 'CameraPos',{'Center of mass':0,'Target':1,'Intruder':2}).name('Camera Position').onChange(CameraPosUp);
 			const PlayPauseFolder = gui.addFolder('Animation Speed');
-			PlayPauseFolder.add(effectController,'gospeed').name('Time Step/Precision (10^8 yrs)').onChange(restart);
+			PlayPauseFolder.add(effectController,'gospeed').name('Calculation Time Step (10^8 yrs)').onChange(restart);
 			PlayPauseFolder.add(effectController,'simspeed').name('Simulation speed').onChange(restart);
 			PlayPauseFolder.add(effectController, 'playpause').name('Play/Pause').onChange(startstop);
 			PlayPauseFolder.add(effectController,'reset').name('Reset').onChange(restart);
