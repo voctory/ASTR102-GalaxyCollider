@@ -136,6 +136,7 @@
 			}
 			//target
 			material_tar = new THREE.MeshBasicMaterial({color: 'cyan'});
+			effectController.tar_mass=Math.abs(effectController.tar_mass)
 			geometry_tar = new THREE.SphereGeometry(Math.pow(effectController.tar_mass,1.0/3.0)*0.05,16,8);
 	;
 			vel_tar[0]=0;
@@ -170,6 +171,7 @@
 			//console.log('in Int')
 			//intruder
 			material_int = new THREE.MeshBasicMaterial({color: 0xFF0000});
+			effectController.int_mass=Math.abs(effectController.int_mass);
 			geometry_int = new THREE.SphereGeometry(Math.pow(effectController.int_mass,1.0/3.0)*0.05,16,8);
 
 			vel_int[0]=effectController.int_velx/vel_scale;
@@ -251,12 +253,12 @@
 			const gui = new GUI();
 
 			const PositionFolder = gui.addFolder( 'Intruder');
-			PositionFolder.add(effectController, 'int_posx', -5.0,5.0,0.1).onChange(generateInt).name('Intruder X (kpc)');
-			PositionFolder.add(effectController, 'int_posy', -5.0,5.0,0.1).onChange(generateInt).name('Intruder Y (kpc)');
-			PositionFolder.add(effectController, 'int_posz', -5.0,5.0,0.1).onChange(generateInt).name('Intruder Z (kpc)');
-			PositionFolder.add(effectController, 'int_velx', -100.0,100.0,1).onChange(generateInt).name('Intruder V_X (kpc/10^8 yrs)');
-			PositionFolder.add(effectController, 'int_vely', -100.0,100.0,1).onChange(generateInt).name('Intruder V_Y (kpc/10^8 yrs)');
-			PositionFolder.add(effectController, 'int_velz', -100.0,100.0,1).onChange(generateInt).name('Intruder V_Z (kpc/10^8 yrs)');
+			PositionFolder.add(effectController, 'int_posx').onChange(generateInt).name('Intruder X (kpc)');
+			PositionFolder.add(effectController, 'int_posy').onChange(generateInt).name('Intruder Y (kpc)');
+			PositionFolder.add(effectController, 'int_posz').onChange(generateInt).name('Intruder Z (kpc)');
+			PositionFolder.add(effectController, 'int_velx').onChange(generateInt).name('Intruder V_X (kpc/10^8 yrs)');
+			PositionFolder.add(effectController, 'int_vely').onChange(generateInt).name('Intruder V_Y (kpc/10^8 yrs)');
+			PositionFolder.add(effectController, 'int_velz').onChange(generateInt).name('Intruder V_Z (kpc/10^8 yrs)');
 			PositionFolder.open();
 			const MassFolder = gui.addFolder('Mass');
 			MassFolder.add(effectController, 'int_mass').onChange(generateInt).name('Intruder Mass (10^6 solar masses)');
