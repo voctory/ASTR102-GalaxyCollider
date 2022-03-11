@@ -92,7 +92,7 @@
 		    effectController.int_posy=1.0;
 		    effectController.int_posz=0.0;
 
-		    effectController.int_velx=.1;
+		    effectController.int_velx=.7;
 		    effectController.int_vely=-.3;
 		    effectController.int_velz=0.0;
 
@@ -261,8 +261,8 @@
 			PositionFolder.add(effectController, 'int_velz').onChange(generateInt).name('Intruder V_Z (kpc/10^8 yrs)');
 			PositionFolder.open();
 			const MassFolder = gui.addFolder('Mass');
-			MassFolder.add(effectController, 'int_mass').onChange(generateInt).name('Intruder Mass (10^6 solar masses)');
-			MassFolder.add(effectController,'tar_mass').onChange(generateTar).name('Target Mass (10^6 solar masses)');
+			MassFolder.add(effectController, 'int_mass').onChange(generateInt).name('Intruder Mass (10^6 Mo)');
+			MassFolder.add(effectController,'tar_mass').onChange(generateTar).name( ' Target  Mass (10^6 Mo)');
 			const StarDistFolder = gui.addFolder('Star Distribution');
 			StarDistFolder.add(effectController, 'starDist', {'Disk':1, 'Ellipsoid Even':2, 'Disk Random':3,'Ellipsoid Random':4}).name('Star Distribution').onChange(generateStars)
 			StarDistFolder.add(effectController, 'particleCount', 1000,10000,100).name('Number of Stars').onChange(generateStars);
