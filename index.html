@@ -264,7 +264,7 @@
 			MassFolder.add(effectController, 'int_mass').onChange(generateInt).name('Intruder Mass (10^6 Mo)');
 			MassFolder.add(effectController,'tar_mass').onChange(generateTar).name( ' Target  Mass (10^6 Mo)');
 			MassFolder.add(effectController, 'starDist', {'Disk':1, 'Ellipsoid Even':2, 'Disk Random':3,'Ellipsoid Random':4}).name('Star Distribution').onChange(generateStars)
-			MassFolder.add(effectController, 'particleCount', 1000,10000,100).name('Number of Stars').onChange(generateStars);
+			MassFolder.add(effectController, 'particleCount', 1000,1000000000000000000,100).name('Number of Stars').onChange(generateStars);
 			MassFolder.add(effectController,'gospeed').name('Calculation Time Step (10^8 yrs)').onChange(restart); 
 			MassFolder.add(effectController,'simspeed').name('Simulation speed').onChange(restart);
 			const PlayPauseFolder = gui.addFolder('Animation');
